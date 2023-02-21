@@ -1,0 +1,573 @@
+---
+title: "Data Exploration"
+output:
+  html_document:
+  toc: yes
+  toc_depth: 2
+  fig_caption: yes 
+editor_options: 
+  chunk_output_type: console
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+tutorial::go_interactive()
+library(palmerpenguins)
+penguins <- as.data.frame(penguins)
+penguins.Compt <- as.data.frame(penguins_raw)
+```
+
+## Objectives of the tutorial.
+
+This practical focuses on how to use Exploratory Data Analysis (EDA),
+with its visualization tools and simple statistics, to: 1) get an
+overview of multidimensional ecological data. 2) Get a sense of the
+variability in the measured variables. 3) Assess the need of
+transforming or re-code some variables. 4) Get a sense of possible
+relations between variables.
+
+## About the data.
+
+Data were collected and made available by [Dr. Kristen
+Gorman](https://www.uaf.edu/cfos/people/faculty/detail/kristen-gorman.php)
+and the [Palmer Station Antarctica
+LTER](https://pallter.marine.rutgers.edu/),a member of the [Long Term
+Ecological Research Network](https://lternet.edu/).
+
+The original `palmerpenguins` data contains morphological information on
+244 individuals of three penguin species (152 individuals of Adelie
+penguins, G68 individuals of Gentoo penguins, and 124 individuals of
+Chinstrap penguins).
+
+![Meet the Palmer penguins - "Artwork by
+@allison_horst".](/Users/alejandroordonez/Library/CloudStorage/Dropbox/Courses_&_Conferences/2023/Courses/ProgrammingAndStatisticsForBiologists/Class/Week%206%20-%20AO/Lecture/Code%20in%20the%20slides/lter_penguins.png)
+
+```{r, echo=FALSE}
+knitr::include_graphics("./lter_penguins.png")
+```
+
+
+
+For this tutorial you will use a simplified version of the data set. For
+each individual, the data set provides measurements on location
+(`island`), bill length in mm (`bill_length_mm`) bill depth in mm
+(`bill_depth_mm`), flipper length in mm (`flipper_length_mm`), body mass
+in g (`body_mass_g`), sex (`sex`), and sampling year (`year`).
+
+## First Contact - *What is in the data set?*
+
+We can start our data exploration, by checking what is in the data set.
+The data is preloaded as the equality names `penguins` object.
+
+For this, the first step is to check `penguins` type of object using the
+function `class()`, and what information type is contained in each
+variable using the function `str()`
+
+```{r DataHead}
+# print the first six rows of the data set
+head(penguins)
+# query the structure of the data set
+str(penguins)
+```
+
+By doing this you can see that the data set has eight (8) columns, with
+there factor variables (`species`, `island`, and `sex`), and five (5)
+numeric variables (either a double number [`bill_length_mm` or
+`bill_depth_mm`] or a integer [`flipper_length_mm`,`body_mass_g`]).
+Also, you can see that there are some individuals for which we are
+missing some information [e.g., row 4, where you see `NA` as the value
+in a cell). As a reminder, for `R`, empty values are represented as `NA`
+that means **Not Available**.
+
+Given that there are missing cells, the first question you might ask is:
+*for how many individuals I have information for **ALL** variables*. One
+way to look at this is to use the `complete.cases()` function, which
+return a logical vector indicating which cases are complete.
+
+```{r FullDataset}
+# Check if a given row has data for all variables
+complete.cases(penguins)
+
+# How many of the rows have data for all variables
+sum(complete.cases(penguins))
+
+# What proportion of rows have data for all variables
+sum(complete.cases(penguins))/dim(penguins)[1]
+```
+
+Removing the rows with at least one variable missing would reduce the
+data set from **`r dim(penguins)[1]`**, to
+**`r sum(complete.cases(penguins))`** observations.
+
+For the sake of simplicity you will now only use a data set with
+complete cases. That requires you to *remove* rows without data, **OR**
+*retain* observations with no empty cells. As the `complete.cases()`
+function, which return a logical vector indicating which cases are
+complete, we can easily take the second approach, and name the
+"filtered" data set `penguins.Compt`.
+
+```{r DatasetFilter}
+## Filter observations with empty cells. 
+penguins.Compt <- penguins[complete.cases(penguins),]
+
+# Print the first six rows of the Filtered data set
+head(penguins.Compt)
+```
+
+## Explore variables - Sampling effort.
+
+As a start you can look how many individuals for each species were
+sampled. One way to do this is to "count" the number of individuals for
+each species in your "complete" data set. A easy way to do this is using
+the `table()` function which builds a contingency table of the counts at
+each combination of factor levels.
+
+```{r Table}
+# builds a contingency table of the counts of the variable of interest
+table(penguins.Compt$species)
+```
+
+Based on this you know that you have
+`r table(penguins.Compt$species)[1]` individuals for
+`r levels(penguins.Compt$species)[1]` penguins,
+`r table(penguins.Compt$species)[2]` individuals for
+`r levels(penguins.Compt$species)[2]` penguins, and
+`r table(penguins.Compt$species)[3]` individuals for
+`r levels(penguins.Compt$species)[3]` penguins.
+
+This Data can also be displayed as a figure. Namely a bar plot where you
+have for each species a bar showing how many individuals were sampled.
+This can be plotted using the `barplot()` function.
+
+```{r barplot1}
+# Plot the counts as a bar plot
+barplot(table(penguins.Compt$species),
+        las = 1,
+        xlab = "penguin species", # Text of the x-axis label
+        ylab = "Number of individuals", # Text of the x-axis label
+        col = gray(3 : 0 / 3) # colours 
+        )
+```
+
+But what about the number of individuals per penguin species in the
+`r length(unique(penguins.Compt$island))` sampled islands? Lucky, the
+the `table()` function allows you to create contingency tables by
+groping multiple variables. you only need to define the groping
+variables.
+
+```{r Table@D}
+# builds a contingency table of the counts of the two variables of interest
+table(penguins.Compt$species,
+      penguins.Compt$island)
+```
+
+Based on this you now can know how many individuals of each species were
+sampled in each island (by looking at each column), or how many
+individuals of a species were sampled in each island (by looking at each
+row). This summary can also be displayed as a bar plot by plotting the
+output of the `table()` function using the `barplot()` function.
+
+```{r barplot2a}
+# Plot the counts as a bar plot - counting individuals by island 
+barplot(table(penguins.Compt$species,
+              penguins.Compt$island),
+        legend.text = unique(penguins.Compt$species), # The grouping legend
+        las = 1,
+        xlab = "Island", # Text of the x-axis label
+        ylab = "Number of individuals", # Text of the x-axis label
+        col = gray(3 : 0 / 3) # colours 
+        )
+```
+
+Now you try to build the same bar plots as above but do the flowing
+changes:
+
+1)  Group the counts of individuals by species (that is, species should
+    be in the x-axis).
+
+2)  Include the argument `beside = T`.
+
+```{r barplot2b}
+# Plot the counts as a bar plot - counting individuals by species
+barplot(table(penguins.Compt$island,
+              penguins.Compt$species),
+        legend.text = unique(penguins.Compt$island), # The grouping legend
+        las = 1,
+        xlab = "penguin species", # Text of the x-axis label
+        ylab = "Number of individuals", # Text of the x-axis label
+        col = gray(3 : 0 / 3), # colours
+        beside = T # are bars stacked on-top of each other? 
+        )
+```
+
+What is the main difference between the two bar-plots? namely that the
+second bar plot allows us to compare number of sampled individuals per
+island on each species.
+
+With this initial exploration you have a good sense of how the sampling
+intensity per species and islands. I would encourage you to now try to
+do this data exploration using `sex` as a grouping variable.
+
+## Explore variables - Descriptive statistics.
+
+To start, we need to clarify the difference between **descriptive
+statistic** (in the count noun sense) **descriptive statisticS** (in the
+mass noun sense). descriptive statistic s a summary statistic that
+quantitatively describes or summarizes features from a collection of
+information, while descriptive statistics is the process of using and
+analysing those statistics. Here we will us the count noun sense
+definition.
+
+Descriptive statistics provide simple summaries about the sample and
+about the observations that have been made. We usually focus on the
+first four [moments](https://en.wikipedia.org/wiki/Moment_(mathematics))
+of the density distribution of a variable. These include [central
+tendency metrics](https://en.wikipedia.org/wiki/Central_tendency) (e.g.,
+Mean, median Mode),
+[dispersion](https://en.wikipedia.org/wiki/Statistical_dispersion)
+(e.g., Standard deviation, Standard error, Interquartile range,
+coefficient of variation),
+[skewness](https://en.wikipedia.org/wiki/Skewness), and
+[kurtosis](https://en.wikipedia.org/wiki/Kurtosis). For simplicity we
+will only look at central tendency and dispersion metrics.
+
+In `R` you can get a quick overview of the data by using the `summary()`
+function.
+
+```{r summStat}
+# Summary of the Dataset
+summary(penguins.Compt)
+```
+
+Based on this table you have a sense of the over number of observation
+per factor level. For numeric variables, you get a sense of the overall
+variability (extremes, and quartiles) and the central tendency
+([mean](https://en.wikipedia.org/wiki/Mean) and
+[median](https://en.wikipedia.org/wiki/Median)).
+
+But what about if you what to check the central tendency and dispersion
+metrics for a single class? You could just subset the dataset for only
+that class of interest and Ask `R` to give you a summary of the data
+using the `summary()` function.
+
+```{r summStatSubset}
+# Estimate the Summary for the first level class
+summary(penguins.Compt[penguins.Compt$species == "Adelie", ])
+# Estimate the Summary for The second level class
+summary(penguins.Compt[penguins.Compt$species == "Chinstrap", ])
+# Estimate the Summary for the third level class
+summary(penguins.Compt[penguins.Compt$species == "Gentoo", ])
+```
+
+This give you now an overview of the variability and central tendency
+per group.
+
+## Explore variables - Morphological variability.
+
+One of the goals of EDA is describe the variability in the variable of
+interest. On simple way to visualize this attribute is to display the
+distribution of a variable of interest and compare the distribution of
+this variable across groups. Here you will focus on **culmen depth** and
+**culmen length** - These are the same as bill depth and length.
+
+![Bill measurements - "Artwork by
+@allison_horst".](/Users/alejandroordonez/Library/CloudStorage/Dropbox/Courses_&_Conferences/2023/Courses/ProgrammingAndStatisticsForBiologists/Class/Week%206%20-%20AO/Lecture/Code%20in%20the%20slides/culmen_depth.png)
+
+One way to look at this is using
+[histograms](https://en.wikipedia.org/wiki/Histogram). These can be easy
+plotted in`R` using the `hist()` function. As an example we will plot
+the distribution of `bill_length_mm` and `bill_depth_mm` side by side.
+
+```{r hist1}
+# Define the plot space so that you have two panels side by side.
+par(mfcol = c(1,2) #Define that the panels are filled are column-wise
+                  # (mfrow means row wise) and you have X-rows , Y-columns
+                  # in the plot space
+    )
+# Plot the Histogram for the first variable
+hist(penguins.Compt$bill_length_mm,
+     xlab = "Bill length (mm)", # x-axis label 
+     main = "Bill length (mm)" # Title
+     )
+# Plot the Histogram for the first variable
+hist(penguins.Compt$bill_depth_mm,
+     xlab = "Bill depth (mm)", # x-axis label
+     main = "Bill depth (mm)" # Title
+     )
+```
+
+One thing is clear form this visualization is that we have different
+number of bars per variable. You could try to standardize these by
+adding the argument `breaks = 5` which tells the function to plot the
+distribution using five 5 breakpoints.
+
+```{r hist2}
+# Define the plot space so that you have two panels side by side.
+par(mfcol = c(1,2) #Define that the panels are filled are column-wise
+                  # (mfrow means row wise) and you have X-rows , Y-columns
+                  # in the plot space
+    )
+# Plot the Histogram for the first variable
+hist(penguins.Compt$bill_length_mm,
+     xlab = "Bill length (mm)", # x-axis label 
+     main = "Bill length (mm)", # Title
+     breaks = 5 #how many breakpoints to have
+     )
+# Plot the Histogram for the first variable
+hist(penguins.Compt$bill_depth_mm,
+     xlab = "Bill depth (mm)", # x-axis label
+     main = "Bill depth (mm)", # Title
+     breaks = 5 #how many breakpoints to have
+     )
+```
+
+You could do more to this visualization, like changing the colour of the
+bars (using the `col = "red` arguments) or adding a density plot over it
+(using the `density()` function.
+
+```{r hist3}
+# Plot the Histogram for the variable of interest
+hist(penguins.Compt$bill_length_mm,
+     xlab = "Bill length (mm)", # x-axis label 
+     main = "Bill length (mm)", # Title
+     breaks = 5, #how many breakpoints to have
+     col= "red", # add a colour
+     freq = F# plot the frequencies (T) OR probability densities (F)
+     )
+
+# Computes kernel density for the variable of interest 
+DenPlto <- density(penguins.Compt$bill_length_mm)
+# Plot the kernel density for the variable of interest
+polygon(x = DenPlto, # the kernel density object
+        lwd = 2, # The width of the plotted line
+        lty = 2 # The plotted line type (2 = hashed)
+        )
+```
+
+One more thing you could add here the distribution central tendency
+([mean](https://en.wikipedia.org/wiki/Mean) and
+[median](https://en.wikipedia.org/wiki/Median)) and [95% confidence
+intervals](https://en.wikipedia.org/wiki/Confidence_interval) (which can
+be approximated as 2x[standard
+deviation](https://en.wikipedia.org/wiki/Standard_deviation) around the
+mean).
+
+```{r moments}
+# Plot the Histogram for the variable of interest
+hist(penguins.Compt$bill_length_mm,
+     xlab = "Bill length (mm)", # x-axis label 
+     main = "Bill length (mm)", # Title
+     breaks = 5, #how many breakpoints to have
+     col= "red", # add a colour
+     freq = F# plot the frequencies (T) OR probability densities (F)
+     )
+
+# Computes kernel density for the variable of interest 
+DenPlto <- density(penguins.Compt$bill_length_mm)
+# Plot the kernel density for the variable of interest
+polygon(x = DenPlto, # the kernel density object
+        lwd = 2, # The width of the plotted line
+        lty = 2 # The plotted line type (2 = hashed)
+        )
+
+# Estimate the mean
+mean.BillLngt <- mean(penguins.Compt$bill_length_mm)
+mean.BillLngt
+# plot the mean as a vertical solid line 
+abline(v = mean.BillLngt,
+       lwd = 2, # The width of the plotted line
+       lty = 1 # The plotted line type (1 = solid)
+       )
+
+# Estimate the median
+median.BillLngt <- median(penguins.Compt$bill_length_mm)
+median.BillLngt
+# plot the median as a vertical solid line 
+abline(v = median.BillLngt,
+       lwd = 2, # The width of the plotted line
+       lty = 3 # The plotted line type (3 = doted)
+       )
+
+# Estimate the SD
+SD.BillLngt <- sd(penguins.Compt$bill_length_mm)
+SD.BillLngt
+
+# plot the median as a vertical hashed-doted line 
+abline(v = mean.BillLngt+(2*SD.BillLngt),
+       lwd = 2, # The width of the plotted line
+       lty = 4 # The plotted line type (4 = hashed-doted)
+       )
+abline(v = mean.BillLngt-(2*SD.BillLngt),
+       lwd = 2, # The width of the plotted line
+       lty = 4 # The plotted line type (4 = hashed-doted)
+       )
+```
+
+While this is a great visualization, it is not clear if `bill_length_mm`
+variability is larger or smaller than that of `bill_depth_mm`. One way
+to assess this is to use [box
+plots](https://en.wikipedia.org/wiki/Box_plot). Box plots provide a
+graphical description of the spread and skewness groups of numerical
+data through their [quartiles](https://en.wikipedia.org/wiki/Quartile).
+In `R` we can plot these using the `boxplot()` function.
+
+Now we will plot the variability in `bill_length_mm` and `bill_depth_mm`
+using box plots.
+
+```{r boxplot1}
+# Plot the box plot for two variables
+boxplot(penguins.Compt[,c("bill_length_mm","bill_depth_mm")],
+        xlab = "variable", # X-label description
+        ylab = "measurment (mm)", # Y-label description
+        col = c("red","blue")# Set colours for the box plots
+        )
+```
+
+It is important to know what `R` is plotting in a box plot. As shown
+below, box plots show the main
+[quartiles](https://en.wikipedia.org/wiki/Quartile) of a distribution.
+By comparing these you comparing the position and size of the boxes you
+can get some sense of differences in the mean and variances of a
+variable.
+
+![What is is a box plot - from
+www.datacamp.com/](/Users/alejandroordonez/Library/CloudStorage/Dropbox/Courses_&_Conferences/2023/Courses/ProgrammingAndStatisticsForBiologists/Class/Week%206%20-%20AO/Lecture/Code%20in%20the%20slides/BoxplotR_Fig.jpg){width="50%"}
+
+One point you might be asking yourselves is "does it make sense to
+contrast these two variables. **The answer is of "course not"**.
+However, you could compare each of these variable between penguin
+species. This can be done using box plots also. However, you will use a
+different syntax within the `boxplot()` function. Namely, you will use
+the formula interface (i.e. `Y~X`), to create a box plot showing the
+distribution of `bill_length_mm` over the different penguins `sepcies`.
+
+```{r boxplot2}
+# Plot the box plot for a variables grouped by a factor
+boxplot(bill_length_mm~species, # A formula --> Cont.Variable ~ grouping variable
+        data = penguins.Compt, # the source data.frame
+        xlab = "species", # X-label description
+        ylab = "measurment (mm)", # Y-label description
+        col = c("red","blue","purple")# Set colours for the box plots
+        )
+
+```
+
+Based on this you could say that Adelie penguins have shorter bills than
+Gentoo and Chinstrap penguins. Also, you could say that Gentoo and
+Chinstrap penguins have similar `bill_length_mm` as their interquartile
+ranges overlap.
+
+However, we have another variable that could determine these patterns:
+`sex`. We know that males penguins tend to be slightly bigger and have
+slightly longer beaks. So assessing differences in `bill_length_mm`
+between species could benefit of also including `sex` as a grouping
+variable. This is also done using the formula interface (i.e. `Y~X*Z`).
+
+```{r boxplot3}
+boxplot(bill_length_mm~species*sex, # A formula --> Cont.Variable ~ grouping variable
+        data = penguins.Compt, # the source data.frame
+        xlab = "species", # X-label description
+        ylab = "measurment (mm)", # Y-label description
+        col = c("red","blue","purple")# Set colours for the box plots
+        )
+```
+
+Based on this new visualization is clear that the Adelie \< Gentoo \<
+Chinstrap ranking is consistent even after accounting for sex.
+
+## Explore variables - Morphological correlations.
+
+Lastly, we will evaluate the relation between `bill_length_mm` and
+`flipper_length_mm` so see if these species have different
+[allometric](https://en.wikipedia.org/wiki/Allometry) relationships.
+Here we will explore if a increase in `bill_length_mm` as a function of
+`flipper_length_mm` is similar between species. For this, we need to
+make a scatter-plot of `bill_length_mm` and `flipper_length_mm` (BTW,
+you usually write Y vs. X).
+
+```{r Scatplt1}
+# Plot the changes in Y as a function of X (Y vs X)
+plot(bill_length_mm ~ flipper_length_mm, # a Formula indicating the relation to plot
+     data = penguins.Compt, # The data frame with the data
+     xlab = "flipper length (mm)", # X-axis label.
+     ylab = "bill length (mm)", # Y-axis label.
+     main = "allometric relationship", # Main title 
+     pch = 19 # Type of point to plot (19 = full)
+     )
+# Define a linear relation 
+TrendLine <- line(y = penguins.Compt$bill_length_mm, # Response
+                  x = penguins.Compt$flipper_length_mm # predictor
+                  ) 
+abline(coef(TrendLine), # Regression coefficients 
+       lwd = 2 # With of the line
+       )
+```
+
+Based on this you could say that there is a link between
+`bill_length_mm` and `flipper_length_mm`. To assess how strong this link
+is, you could estimate the [Pearson correlation
+coefficient](https://en.wikipedia.org/wiki/Pearson_correlation_coefficient).
+In R this can be done using the `cor()` or `cor.test()` functions. The
+difference between these is that `cor()` **ONLY** estimates the
+coefficient, while `cor.test()` also estimates the "significance" of the
+correlation (i.e., if the relation is different form what you would
+expect from a random linkage between variables).
+
+```{r CorTest}
+# Estimate the correlation between the variables
+cor(y = penguins.Compt$bill_length_mm, # Variable 1
+    x = penguins.Compt$flipper_length_mm # Variable 2
+    )
+
+# Estimate the correlation between the variables and its significance 
+cor.test(y = penguins.Compt$bill_length_mm, # Variable 1
+         x = penguins.Compt$flipper_length_mm # Variable 2
+         )
+```
+
+Based on this you could conform that there is a strong link between
+`bill_length_mm` and `flipper_length_mm`. But what about our original
+question: is the variation between species in the `bill_length_mm` vs
+`flipper_length_mm` relation? To test this we can start by plotting
+`bill_length_mm` vs `flipper_length_mm` again but colouring the dots by
+the corresponding species.
+
+```{r Scatplt2}
+# Plot the changes in Y as a function of X (Y vs X)
+plot(bill_length_mm ~ flipper_length_mm, # a Formula indicating the relation to plot
+     data = penguins.Compt, # The data frame with the data
+     xlab = "flipper length (mm)", # X-axis label.
+     ylab = "bill length (mm)", # Y-axis label.
+     main = "allometric relationship", # Main title 
+     pch = 19, # Type of dot to plot (19 = full)
+     col = penguins.Compt$species # Colour by species (it works as penguins.Compt$species is a factor)
+     )
+# add a legend for the colours
+legend("bottomright", # location based on a string
+       fill= 1:3,
+       legend = levels(penguins.Compt$species))
+
+# Plot the  linear relation for all the species
+TrendLine <- line(y = penguins.Compt$bill_length_mm, # Response
+                  x = penguins.Compt$flipper_length_mm # predictor
+                  ) 
+abline(coef(TrendLine), # Regression coefficients 
+       lwd = 2 # With of the line
+       )
+```
+
+Base don this plot you could say that the overall relation works for the
+Adelie and Gentoo penguins, but not for the Chinstrap penguin. For this
+last one there the change in bill length per mm change in flipper length
+could be the same, **BUT** it will have a larger Bill than Adelie and
+Gentoo penguins that have the same flipper length (because the points
+are higher than the overall trend line).
+
+## Final Points.
+
+With this, we have done a preliminary evaluation of the Palmer penguins
+data set, getting to know how it sampling intensity, variability in
+variables, and relations between these. With this, you can now start
+generating informed hypotheses.
